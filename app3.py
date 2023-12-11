@@ -7,6 +7,11 @@ import seaborn as sns
 import statsmodels.api as sm
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.svm import SVR
+from sklearn.model_selection import GridSearchCV
+from tensorflow import keras
+from tensorflow.keras import layers
 from PIL import Image  # Added for image processing
 
 @st.cache_resource
@@ -54,6 +59,35 @@ def train_poisson_model(X_train_scaled, y_train):
     result = poisson_model.fit()
     return result
 
+@st.cache_resource
+def train_random_forest_model(X_train_scaled, y_train):
+    rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
+    rf_model.fit(X_train_scaled, y_train)
+    return rf_model
+
+@st.cache_resource
+def train_svr_model(X_train_scaled, y_train):
+    # Hyperparameter Tuning for SVR
+    param_grid = {
+        "C": np.logspace(-2, 3, 6),
+        "gamma": np.logspace(-3, 2, 6)
+    }
+    svr_model = GridSearchCV(SVR(kernel='rbf'), param_grid=param_grid, cv=5)
+    svr_model.fit(X_train_scaled, y_train)
+    return svr_model
+
+@st.cache_resource
+def train_neural_network(X_train_scaled, y_train):
+    model = keras.Sequential([
+        layers.Dense(64, activation='relu', input_shape=(X_train_scaled.shape[1],)),
+        layers.Dense(32, activation='relu'),
+        layers.Dense(1)
+    ])
+
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    model.fit(X_train_scaled, y_train, epochs=50, batch_size=32, verbose=0)
+    return model
+
 def predict_and_evaluate(result, X_test_scaled, test_data):
     y_pred_nb = result.predict(X_test_scaled)
     test_data['Predicted_Case_Count'] = y_pred_nb
@@ -77,16 +111,6 @@ def plot_results(grouped_df):
     plt.tight_layout()
     return fig
 
-def display_logo_and_background(show_logo, logo, background_image):
-    if show_logo and logo is not None:
-        logo_img = Image.open(logo)
-        st.image(logo_img, use_column_width=True, caption="Your Logo")
-
-    if background_image is not None:
-        bg_img = Image.open(background_image)
-        st.image(bg_img, use_column_width=True, caption="Background Image")
-
-
 def main():
     # Set the Seaborn style
     sns.set(style="whitegrid", palette="pastel")
@@ -109,6 +133,18 @@ def main():
     
     # Allow users to choose features
     st.sidebar.header("Select Features")
+
+    # Set the background color for the sidebar
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stSidebar"][aria-expanded="true"] > div {
+            background-color: #1E538F;  /* Set the background color to #1E538F */
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
     selected_features = st.sidebar.multiselect("Select Features", all_features, default= all_features)
 
 
@@ -120,11 +156,20 @@ def main():
     X_train_scaled, X_test_scaled, y_train, y_test = encode_and_scale(train_data, test_data, features, target)
 
     # Sidebar option to switch between models
-    model_type = st.sidebar.radio("Select Model", ["Negative Binomial", "Poisson"])
+    model_type = st.sidebar.radio("Select Model", ["Negative Binomial", "Poisson", "Random Forest", "SVR", "Neural Network"])
+
     if model_type == "Negative Binomial":
         result = train_negative_binomial_model(X_train_scaled, y_train)
-    else:
+    elif model_type == "Poisson":
         result = train_poisson_model(X_train_scaled, y_train)
+    elif model_type == "Random Forest":
+        result = train_random_forest_model(X_train_scaled, y_train)
+    elif model_type == "SVR":
+        result = train_svr_model(X_train_scaled, y_train)
+
+    elif model_type == "Neural Network":
+        result = train_neural_network(X_train_scaled, y_train)
+        #y_pred = predict_neural_network(nn_model, X_test_scaled)
 
     rmse, mae, test_data = predict_and_evaluate(result, X_test_scaled, test_data)
 
@@ -140,15 +185,15 @@ def main():
         return base64.b64encode(data).decode()
 
 
-    img = get_img_as_base64("background.png")
+    img = get_img_as_base64("Pattern.png")
 
     # Display background image and set the logo at the top right
     page_bg_img = """
     <style>
-    [data-testid="stAppViewContainer"] div:first-child{{
+    [data-testid="stAppViewContainer"]{
     background-image: url("data:image/png;base64,{img}");
     background-size: cover;
-    }}
+    }
     </style>
     """
 
