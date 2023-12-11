@@ -19,12 +19,12 @@ def apply_lag(df):
     lag_temp = 16
     lag_rainfall = 4
     lag_dew = 8
-    col_name_avg_temp = f'avg_temp_lag_{lag_temp}'
-    col_name_total_precipitation = f'rainfall_lag_{lag_rainfall}'
-    col_name_avg_dew_temp = f'avg_dew_lag_{lag_dew}'
+    col_name_avg_temp = 'Avg_Temperature'
+    col_name_total_precipitation = 'Rainfall'
+    col_name_avg_dew_temp = 'Avg_Dewpoint_Temperature'
     df[[col_name_total_precipitation]] = df.groupby('District')[['Total_Precipitation']].shift(lag_rainfall)
-    df[[col_name_avg_temp]] = df.groupby('District')[['2m_Temperature']].shift(lag_temp)
-    df[[col_name_avg_dew_temp]] = df.groupby('District')[['2m_Dewpoint_Temperature']].shift(lag_dew)
+    df[[col_name_avg_temp]] = df.groupby('District')[['Temperature']].shift(lag_temp)
+    df[[col_name_avg_dew_temp]] = df.groupby('District')[['Dewpoint_Temperature']].shift(lag_dew)
     df = df.sort_values(by=['Record_Year', 'Record_Week'], ascending=[True, True]).reset_index(drop=True)
     df = df.dropna().reset_index(drop=True)
     return df
@@ -124,6 +124,9 @@ def main():
     # Load the data
     df = pd.read_csv('data_district.csv')
 
+    #change the name of columns
+    df = df.rename(columns={'2m_Dewpoint_Temperature': 'Dewpoint_Temperature', '2m_Temperature': 'Temperature', 'rainfall_lag_4': 'Rainfall', 'avg_temp_lag_16': 'Avg_Temperature', 'avg_dew_lag_8': 'Avg_Dewpoint_Temperature'})
+
     # Apply lag to the data
     features2 = apply_lag(df)
 
@@ -133,8 +136,12 @@ def main():
 
     # Define features and target variable
     all_features = ['Population', 'Geographical_Area', 'Population_Density',
-                    'Total_Precipitation', '2m_Dewpoint_Temperature', '2m_Temperature',
-                    'rainfall_lag_4', 'avg_temp_lag_16', 'avg_dew_lag_8']
+                    'Total_Precipitation', 'Dewpoint_Temperature', 'Temperature',
+                    'Rainfall', 'Avg_Temperature', 'Avg_Dewpoint_Temperature']
+
+    # all_features = ['Population', 'Geographical_Area', 'Population_Density',
+    #                 'Total_Precipitation', '2m_Dewpoint_Temperature', '2m_Temperature',
+    #                 'rainfall_lag_4', 'avg_temp_lag_16', 'avg_dew_lag_8']
     record_weeks = [f'Record_Week_{i}' for i in range(1, 53)]
     
     # Allow users to choose features
