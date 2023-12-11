@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import base64
 import matplotlib.pyplot as plt
 import seaborn as sns
 import statsmodels.api as sm
@@ -106,10 +107,15 @@ def main():
                     'rainfall_lag_4', 'avg_temp_lag_16', 'avg_dew_lag_8']
     record_weeks = [f'Record_Week_{i}' for i in range(1, 53)]
     
-    selected_features = st.sidebar.multiselect("Select Features", all_features, default=all_features)
+    # Allow users to choose features
+    st.sidebar.header("Select Features")
+    selected_features = st.sidebar.multiselect("Select Features", all_features, default= all_features)
 
+
+    
     features = selected_features + record_weeks
     target = 'Case_Count'
+
 
     X_train_scaled, X_test_scaled, y_train, y_test = encode_and_scale(train_data, test_data, features, target)
 
@@ -124,38 +130,31 @@ def main():
 
     grouped_df = test_data.groupby(['Record_Week']).sum()
 
-    
-
-
-        # Allow users to choose the model
-    #st.sidebar.header("Customization")
-    #selected_model = st.sidebar.radio("Select Model", ("Negative Binomial", "Poisson"), index=0)
-
-    # Specify fixed paths for the logo and background image
-    # Update these paths with the actual paths on your machine
+    # Set the paths for the logo and background image
     logo_path = "ARTPARKLogo.png"
-    background_path = "background.png"
 
+    @st.cache_data
+    def get_img_as_base64(file):
+        with open(file, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+
+
+    img = get_img_as_base64("background.png")
 
     # Display background image and set the logo at the top right
-    background_css = f"background-image: url({background_path}); background-size: cover;"
-    logo_css = f"position: absolute; top: 20px; right: 20px;"
+    page_bg_img = """
+    <style>
+    [data-testid="stAppViewContainer"] div:first-child{{
+    background-image: url("data:image/png;base64,{img}");
+    background-size: cover;
+    }}
+    </style>
+    """
 
-    st.markdown(
-        f"""
-        <style>
-            .reportview-container {{
-                {background_css}
-            }}
-            .logo-container {{
-                {logo_css}
-            }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    st.markdown(page_bg_img , unsafe_allow_html=True)
     # Display logo
-    st.image(logo_path, use_column_width=False, width=200)
+    st.image(logo_path, use_column_width= True, width= 150)
 
     # Streamlit App
     st.title("Dengue Forecasting App")
@@ -165,16 +164,6 @@ def main():
     st.subheader("Model Evaluation")
     st.text(f"RMSE: {rmse}")
     st.text(f"MAE: {mae}")
-
-    # Display logo
-    st.markdown(
-        f"""
-        <div class="logo-container">
-            <img src="{logo_path}" alt="Logo" width="100">
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
 
     # Show the plot
     st.pyplot(fig)
