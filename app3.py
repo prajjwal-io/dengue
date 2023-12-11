@@ -15,7 +15,7 @@ from tensorflow.keras import layers
 
 
 # Load your background image
-background_image_path = "background.png"
+background_image_path = "IISc.png"
 # Load your logo image
 logo_path = "ARTPARKLogo.png"
 
@@ -36,6 +36,7 @@ background: rgba(0,0,0,0);
 
 }}
 [data-testid="stSidebar"] {{
+
     background : rgb(58, 152, 185);
     background-attachment: fixed;
     background-size: cover;
@@ -43,10 +44,6 @@ background: rgba(0,0,0,0);
     background-position: top-right;
     
     }}
-div[data-testid="stSidebar"][aria-expanded="true"] div div div div {{
-    font-weight: bold;  /* Make sidebar text bold */
-}}
-
 
 </style>
 """
@@ -143,8 +140,10 @@ def predict_and_evaluate(result, X_test_scaled, test_data):
 
     return rmse, mae, test_data
 
-def plot_results(grouped_df):
+def plot_results(grouped_df, test_data):
     fig, ax = plt.subplots(figsize=(12, 6))
+    rmse = np.sqrt(mean_squared_error(test_data['Case_Count'], test_data['Predicted_Case_Count']))
+    mae = mean_absolute_error(test_data['Case_Count'], test_data['Predicted_Case_Count'])
     ax.plot(grouped_df['Case_Count'], marker='o', linestyle='-', color='mediumblue', label='Actual', linewidth=2)
     ax.plot(grouped_df['Predicted_Case_Count'], marker='o', linestyle='--', color='coral', label='Predicted', linewidth=2)
     ax.grid(axis='y', linestyle='--', alpha=0.7)
@@ -154,8 +153,48 @@ def plot_results(grouped_df):
     ax.legend(fontsize=10)
     legend = ax.legend(fontsize=10)
     legend.get_frame().set_facecolor('lightgray')
+    # Annotate RMSE and MAE values
+    bbox_props = dict(boxstyle="round,pad=0.3", edgecolor="black", facecolor="white")
+    ax.annotate(f"RMSE: {rmse:.2f}", xy=(1.0, 0.70), xycoords='axes fraction', ha="right", va="center",
+                bbox=bbox_props, fontsize=10)
+    ax.annotate(f"MAE: {mae:.2f}", xy=(1.0, 0.62), xycoords='axes fraction', ha="right", va="center",
+                bbox=bbox_props, fontsize=10)
     plt.tight_layout()
     return fig
+
+
+def plot_district_results(test_data, district_name, predicted_column):
+    district_data = test_data[test_data['District'] == district_name]
+    #add rmse and mae values on the top of graph
+    rmse = np.sqrt(mean_squared_error(district_data['Case_Count'], district_data[predicted_column]))
+    mae = mean_absolute_error(district_data['Case_Count'], district_data[predicted_column])
+
+    #annotate rmse and mae values on the top of graph
+    
+    if district_data.empty:
+        print(f"District data for {district_name} is empty.")
+        return None
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ax.plot(district_data['Record_Week'], district_data['Case_Count'], marker= 'o', linestyle = '-', color = 'mediumblue', label='Actual', linewidth=2)
+    ax.plot(district_data['Record_Week'], district_data[predicted_column], marker='o', linestyle='--', color='coral', label='Predicted', linewidth=2)
+    ax.set_xlabel('Record Week', fontsize=12)
+    ax.set_ylabel('Case Count', fontsize=12)
+    ax.set_title(f'Actual vs Predicted Case Count for {district_name} in 2023)', fontsize=14)
+    ax.legend(fontsize=10)
+    legend = ax.legend(fontsize=10)
+    legend.get_frame().set_facecolor('lightgray')
+    # Annotate RMSE and MAE values
+    bbox_props = dict(boxstyle="round,pad=0.3", edgecolor="black", facecolor="white")
+    ax.annotate(f"RMSE: {rmse:.2f}", xy=(1.0, 0.70), xycoords='axes fraction', ha="right", va="center",
+                bbox=bbox_props, fontsize=10)
+    ax.annotate(f"MAE: {mae:.2f}", xy=(1.0, 0.62), xycoords='axes fraction', ha="right", va="center",
+                bbox=bbox_props, fontsize=10)
+    plt.tight_layout()
+
+    return fig
+
+
 
 def main():
     # Set the Seaborn style
@@ -201,8 +240,9 @@ def main():
     X_train_scaled, X_test_scaled, y_train, y_test = encode_and_scale(train_data, test_data, features, target)
 
     # Sidebar option to switch between models
-    model_type = st.sidebar.radio("Select Model", ["Negative Binomial", "Poisson", "Random Forest", "SVR", "Neural Network", "Linear Regression"])
+    st.sidebar.header("Select Model")
 
+    model_type = st.sidebar.radio("List : ", ["Negative Binomial", "Poisson", "Random Forest", "SVR", "Neural Network", "Linear Regression"] , label_visibility="visible")
 
     if model_type == "Negative Binomial":
         result = train_negative_binomial_model(X_train_scaled, y_train)
@@ -220,6 +260,7 @@ def main():
         #y_pred = predict_neural_network(nn_model, X_test_scaled)
 
     rmse, mae, test_data = predict_and_evaluate(result, X_test_scaled, test_data)
+    print(test_data)
 
     grouped_df = test_data.groupby(['Record_Week']).sum()
    
@@ -235,17 +276,24 @@ def main():
     </style> """, unsafe_allow_html=True)
     #st.markdown('<style>body{background-color: #E5E7E9;}</style>',unsafe_allow_html=True)
     st.markdown('<style>h1{color: #1F618D;}</style>',unsafe_allow_html=True)
+        # Allow users to choose the district
+    selected_district = st.sidebar.selectbox("Select District", test_data['District'].unique(), index=0)
     # Display the results plot
-    fig = plot_results(grouped_df)
+    fig = plot_results(grouped_df, test_data)
+    # Display the district-specific plot
+    if selected_district:
+        fig2 = plot_district_results(test_data, selected_district, 'Predicted_Case_Count')
+        st.pyplot(fig2)
     # Show the plot
     st.pyplot(fig)
-    # Display RMSE and MAE at the bottom right
-    rmse_col, mae_col = st.columns([3, 1])
-    with rmse_col:
-        st.write("")
-    with mae_col:
-        st.text(f"RMSE: {rmse}")
-        st.text(f"MAE: {mae}")
+    #st.pyplot(fig2)
+    # # Display RMSE and MAE at the bottom right
+    # rmse_col, mae_col = st.columns([3, 1])
+    # with rmse_col:
+    #     st.write("")
+    # with mae_col:
+    #     st.text(f"RMSE: {rmse}")
+    #     st.text(f"MAE: {mae}")
 
 
 if __name__ == "__main__":
