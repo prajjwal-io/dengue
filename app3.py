@@ -140,12 +140,13 @@ def main():
     # Allow users to choose features
     st.sidebar.header("Select Features")
 
-    #add sidebar features with checkboxes to select
-    selected_features = st.sidebar.multiselect("Select Features", all_features, default=all_features)
+# Toggle for each feature
+    selected_features = {}
+    for feature in all_features:
+        selected_features[feature] = st.sidebar.checkbox(feature, value=True)
 
-    #show selected features in dropdown with tick boxes
-    st.sidebar.write("Selected Features:", selected_features)
-    
+    # Filter out unchecked features
+    selected_features = [feature for feature, selected in selected_features.items() if selected]
     features = selected_features + record_weeks
     target = 'Case_Count'
 
