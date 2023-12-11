@@ -88,6 +88,12 @@ def train_neural_network(X_train_scaled, y_train):
     model.fit(X_train_scaled, y_train, epochs=50, batch_size=32, verbose=0)
     return model
 
+@st.cache_resource
+def train_multivariate_regression(X_train_scaled, y_train):
+    model = sm.OLS(y_train, X_train_scaled)
+    result = model.fit()
+    return result
+
 def predict_and_evaluate(result, X_test_scaled, test_data):
     y_pred_nb = result.predict(X_test_scaled)
     test_data['Predicted_Case_Count'] = y_pred_nb
@@ -134,20 +140,11 @@ def main():
     # Allow users to choose features
     st.sidebar.header("Select Features")
 
-    # Set the background color for the sidebar
-    st.markdown(
-        """
-        <style>
-        div[data-testid="stSidebar"][aria-expanded="true"] > div {
-            background-color: #1E538F;  /* Set the background color to #1E538F */
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-    selected_features = st.sidebar.multiselect("Select Features", all_features, default= all_features)
+    #add sidebar features with checkboxes to select
+    selected_features = st.sidebar.multiselect("Select Features", all_features, default=all_features)
 
-
+    #show selected features in dropdown with tick boxes
+    st.sidebar.write("Selected Features:", selected_features)
     
     features = selected_features + record_weeks
     target = 'Case_Count'
@@ -156,7 +153,7 @@ def main():
     X_train_scaled, X_test_scaled, y_train, y_test = encode_and_scale(train_data, test_data, features, target)
 
     # Sidebar option to switch between models
-    model_type = st.sidebar.radio("Select Model", ["Negative Binomial", "Poisson", "Random Forest", "SVR", "Neural Network"])
+    model_type = st.sidebar.radio("Select Model", ["Negative Binomial", "Poisson", "Random Forest", "SVR", "Neural Network", "Linear Regression"])
 
     if model_type == "Negative Binomial":
         result = train_negative_binomial_model(X_train_scaled, y_train)
@@ -166,6 +163,8 @@ def main():
         result = train_random_forest_model(X_train_scaled, y_train)
     elif model_type == "SVR":
         result = train_svr_model(X_train_scaled, y_train)
+    elif model_type == "Linear Regression":
+        result = train_multivariate_regression(X_train_scaled, y_train)
 
     elif model_type == "Neural Network":
         result = train_neural_network(X_train_scaled, y_train)
