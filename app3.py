@@ -12,7 +12,47 @@ from sklearn.svm import SVR
 from sklearn.model_selection import GridSearchCV
 from tensorflow import keras
 from tensorflow.keras import layers
-from PIL import Image  # Added for image processing
+
+
+# Load your background image
+background_image_path = "background.png"
+# Load your logo image
+logo_path = "ARTPARKLogo.png"
+
+# Convert image to base64
+with open(background_image_path, "rb") as image_file:
+    encoded_image = base64.b64encode(image_file.read()).decode("utf-8")
+
+page_bg_img = f"""
+<style>
+[data-testid="stApp"]{{
+    
+    background-color: #f5f5f5;
+    background-size: cover;
+    background-repeat: no-repeat;
+}}
+[data-testid="stHeader"]{{
+background: rgba(0,0,0,0);
+
+}}
+[data-testid="stSidebar"] {{
+    background : rgb(58, 152, 185);
+    background-attachment: fixed;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: top-right;
+    
+    }}
+div[data-testid="stSidebar"][aria-expanded="true"] div div div div {{
+    font-weight: bold;  /* Make sidebar text bold */
+}}
+
+
+</style>
+"""
+
+st.markdown(page_bg_img, unsafe_allow_html=True)
+
 
 @st.cache_resource
 def apply_lag(df):
@@ -163,6 +203,7 @@ def main():
     # Sidebar option to switch between models
     model_type = st.sidebar.radio("Select Model", ["Negative Binomial", "Poisson", "Random Forest", "SVR", "Neural Network", "Linear Regression"])
 
+
     if model_type == "Negative Binomial":
         result = train_negative_binomial_model(X_train_scaled, y_train)
     elif model_type == "Poisson":
@@ -181,45 +222,31 @@ def main():
     rmse, mae, test_data = predict_and_evaluate(result, X_test_scaled, test_data)
 
     grouped_df = test_data.groupby(['Record_Week']).sum()
-
-    # Set the paths for the logo and background image
-    logo_path = "ARTPARKLogo.png"
-
-    @st.cache_data
-    def get_img_as_base64(file):
-        with open(file, "rb") as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-
-
-    img = get_img_as_base64("Pattern.png")
-
-    # Display background image and set the logo at the top right
-    page_bg_img = """
-    <style>
-    [data-testid="stAppViewContainer"]{
-    background-image: url("data:image/png;base64,{img}");
-    background-size: cover;
-    }
-    </style>
-    """
-
-    st.markdown(page_bg_img , unsafe_allow_html=True)
+   
     # Display logo
     st.image(logo_path, use_column_width= True, width= 150)
 
     # Streamlit App
-    st.title("Dengue Forecasting App")
+    st.title("Dengue Forecasting App" , anchor= "center")
+    #change the color of the title
+    st.markdown(""" <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    </style> """, unsafe_allow_html=True)
+    #st.markdown('<style>body{background-color: #E5E7E9;}</style>',unsafe_allow_html=True)
+    st.markdown('<style>h1{color: #1F618D;}</style>',unsafe_allow_html=True)
     # Display the results plot
     fig = plot_results(grouped_df)
-    # Display RMSE and MAE
-    st.subheader("Model Evaluation")
-    st.text(f"RMSE: {rmse}")
-    st.text(f"MAE: {mae}")
-
     # Show the plot
     st.pyplot(fig)
-    
+    # Display RMSE and MAE at the bottom right
+    rmse_col, mae_col = st.columns([3, 1])
+    with rmse_col:
+        st.write("")
+    with mae_col:
+        st.text(f"RMSE: {rmse}")
+        st.text(f"MAE: {mae}")
+
 
 if __name__ == "__main__":
     main()
